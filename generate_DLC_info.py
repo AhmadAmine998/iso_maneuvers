@@ -6,13 +6,13 @@ import math
 VEHICLE_WIDTH = 2.0 # in meters
 
 # ISO 3888-2 Standard all in meters
-B1 = 1.1 * VEHICLE_WIDTH + 0.25 
+B1 = 1.1 * VEHICLE_WIDTH + 0.25
 B3 = VEHICLE_WIDTH + 1
 B5 = min(1.3 * VEHICLE_WIDTH + 0.25, 3.0)
 
-SECTION_LENGTHS = [12.0, 13.5, 11.0, 12.5, 12.0]
-SECTION_WIDTHS  = [  B1, None,   B3, None,   B5]
-SECTION_OFFSETS = [ 0.0,  0.0,  1.0,  0.0,  0.0]
+SECTION_LENGTHS = np.array([12.0,   13.5, 11.0,   12.5, 12.0])
+SECTION_WIDTHS  = np.array([  B1, np.inf,   B3, np.inf,   B5])
+SECTION_OFFSETS = np.array([ 0.0,    0.0,  1.0,    0.0,  0.0])
 
 CONE_WIDTH = 0.285
 
@@ -33,7 +33,7 @@ curr_x = START_X
 # width of last non-empty section
 prev_width = 0.0
 for i, length in enumerate(SECTION_LENGTHS):
-    if SECTION_WIDTHS[i] is None:
+    if SECTION_WIDTHS[i] == np.inf:
         # no cones
         curr_x += length
         continue
