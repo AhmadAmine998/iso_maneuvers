@@ -142,6 +142,16 @@ def generate_splines(n_maneuver = 0, interp_linear=True):
         x_new = x_new_rep.copy()
         y_new = y_new_rep.copy()
 
+        # Clean generation of waypoints for reference
+        waypoints_xrep = waypoints_x.copy()
+        waypoints_yrep = waypoints_y.copy()
+        for i in range(repeat):
+            waypoints_xrep = np.append(waypoints_xrep, waypoints_x + waypoints_xrep[-1])
+            waypoints_yrep = np.append(waypoints_yrep, waypoints_y)
+
+        waypoints_xrep = np.append(waypoints_xrep, np.array([D, XP5])+ waypoints_xrep[-1] - XP4)
+        waypoints_yrep = np.append(waypoints_yrep, np.array([START_Y, START_Y]))
+
     return x_new, y_new, waypoints_xrep, waypoints_yrep
 
 # Vehicle parameters
@@ -214,7 +224,7 @@ for i, length in enumerate(SECTION_LENGTHS):
     prev_width = SECTION_WIDTHS[i]
 
 # Get interpolated spline from waypoints
-x_new, y_new, waypoints_x, waypoints_y = generate_splines(n_maneuver=20, interp_linear=True)
+x_new, y_new, waypoints_x, waypoints_y = generate_splines(n_maneuver=10, interp_linear=True)
 
 plt.figure()
 plt.title("DLC Maneuver Cones and Trajectory")
