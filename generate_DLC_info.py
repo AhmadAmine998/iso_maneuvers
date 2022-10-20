@@ -5,7 +5,9 @@ import scipy
 # utils
 from utils.bezier_interpolation import interp_bezier
 
-def generate_splines(interp_linear=True):
+def generate_splines(n_maneuver = 0, interp_linear=True):
+    repeat = n_maneuver - 1 
+
     # Used to generate splines
     XP0 = START_X
     A = SECTION_LENGTHS[0] - 5.0
@@ -19,46 +21,128 @@ def generate_splines(interp_linear=True):
     D = (C + 5.0 + SECTION_LENGTHS[3]) + 5.0
     XP5 = XP4 + SECTION_LENGTHS[4]
 
-    waypoints_x = np.array([
-                            XP0, 
-                            A, 
-                            XP1, 
-                            XP2,
-                            B, 
-                            C, 
-                            XP3,
-                            XP4,
-                            D,
-                            XP5
-                            ])
-
     # y-coordinates of spline
     wpt_offset = SECTION_WIDTHS[2] / 2.0 + SECTION_WIDTHS[0]/2.0 + SECTION_OFFSETS[2]
 
-    waypoints_y = np.array([
-                            START_Y,        # XP0
-                            START_Y,        # A
-                            START_Y,        # XP1
-                            wpt_offset,     # XP2
-                            wpt_offset,     # B
-                            wpt_offset,     # C
-                            wpt_offset,     # XP3
-                            START_Y,        # XP4
-                            START_Y,        # D
-                            START_Y         # XP5
-                            ])
+    if repeat > 0:
+        waypoints_x = np.array([
+                                XP0, 
+                                A, 
+                                XP1, 
+                                XP2,
+                                B, 
+                                C, 
+                                XP3,
+                                XP4,
+                                # D,
+                                # XP5
+                                ])
 
-    
+        waypoints_y = np.array([
+                                START_Y,        # XP0
+                                START_Y,        # A
+                                START_Y,        # XP1
+                                wpt_offset,     # XP2
+                                wpt_offset,     # B
+                                wpt_offset,     # C
+                                wpt_offset,     # XP3
+                                START_Y,        # XP4
+                                # START_Y,        # D
+                                # START_Y         # XP5
+                                ])
+    else:
+        waypoints_x = np.array([
+                                XP0, 
+                                A, 
+                                XP1, 
+                                XP2,
+                                B, 
+                                C, 
+                                XP3,
+                                XP4,
+                                D,
+                                XP5
+                                ])
+
+        waypoints_y = np.array([
+                                START_Y,        # XP0
+                                START_Y,        # A
+                                START_Y,        # XP1
+                                wpt_offset,     # XP2
+                                wpt_offset,     # B
+                                wpt_offset,     # C
+                                wpt_offset,     # XP3
+                                START_Y,        # XP4
+                                START_Y,        # D
+                                START_Y         # XP5
+                                ])
+
+    waypoints_xrep = waypoints_x.copy()
+    waypoints_yrep = waypoints_y.copy()
+
+    SEGMENT_WIDTH = waypoints_xrep[-1]
+    if repeat < 3:
+        for i in range(repeat):
+            waypoints_xrep = np.append(waypoints_xrep, waypoints_x + waypoints_xrep[-1])
+            waypoints_yrep = np.append(waypoints_yrep, waypoints_y)
+        
+        waypoints_xrep = np.append(waypoints_xrep, np.array([D, XP5])+ waypoints_xrep[-1] - XP4)
+        waypoints_yrep = np.append(waypoints_yrep, np.array([START_Y, START_Y]))
+    else:
+        # Generate one pattern
+        for i in range(3):
+            waypoints_xrep = np.append(waypoints_xrep, waypoints_x + waypoints_xrep[-1])
+            waypoints_yrep = np.append(waypoints_yrep, waypoints_y)
+
+        waypoints_xrep = np.append(waypoints_xrep, np.array([D, XP5])+ waypoints_xrep[-1] - XP4)
+        waypoints_yrep = np.append(waypoints_yrep, np.array([START_Y, START_Y]))
+
     if interp_linear:
         # Dense linear interpolation for more accurate bezier curve
-        spl = scipy.interpolate.interp1d(waypoints_x, waypoints_y, kind='slinear')
-        x_new = np.arange(waypoints_x[0], waypoints_x[-1], 0.25)
+        spl = scipy.interpolate.interp1d(waypoints_xrep, waypoints_yrep, kind='slinear')
+        x_new = np.arange(waypoints_xrep[0], waypoints_xrep[-1], 0.25)
         y_new = spl(x_new)
+    else:
+        x_new = waypoints_xrep.copy()
+        y_new = waypoints_yrep.copy()
 
     points = np.vstack((x_new, y_new)).T
     x_new, y_new = interp_bezier(points)
 
-    return x_new, y_new, waypoints_x, waypoints_y
+    if repeat >= 3:
+        # repeat by copy
+        loc_start = XP4 + 2*SEGMENT_WIDTH
+        idx_start = (np.abs(x_new - loc_start)).argmin()
+
+        loc_end   = XP4 
+        idx_end   = (np.abs(x_new - loc_end)).argmin()
+
+        repeat_x = x_new[idx_start:idx_end].copy()
+        repeat_y = y_new[idx_start:idx_end].copy()
+        
+        # Generate repeat pattern
+        for i in range(repeat - 3):
+            repeat_x = np.append(repeat_x, x_new[idx_start:idx_end] + repeat_x[-1])
+            repeat_y = np.append(repeat_y, y_new[idx_start:idx_end])
+
+        # Start at start
+        x_new_rep = x_new[idx_end:].copy()
+        y_new_rep = y_new[idx_end:].copy()
+
+        # Replace middle with repeat
+        x_new_rep = np.append(x_new_rep, repeat_x.copy())
+        y_new_rep = np.append(y_new_rep, repeat_y.copy())
+
+        # end at end
+        end_seg_x = x_new[:idx_start]
+        end_seg_y = y_new[:idx_start]
+        x_new_rep = np.append(x_new_rep, x_new[:idx_start] - end_seg_x[-1] + repeat_x.max())
+        y_new_rep = np.append(y_new_rep, y_new[:idx_start])
+
+        x_new = x_new_rep.copy()
+        y_new = y_new_rep.copy()
+
+    return x_new, y_new, waypoints_xrep, waypoints_yrep
 
 # Vehicle parameters
 VEHICLE_WIDTH = 2.0 # in meters
@@ -130,7 +214,7 @@ for i, length in enumerate(SECTION_LENGTHS):
     prev_width = SECTION_WIDTHS[i]
 
 # Get interpolated spline from waypoints
-x_new, y_new, waypoints_x, waypoints_y = generate_splines(interp_linear=True)
+x_new, y_new, waypoints_x, waypoints_y = generate_splines(n_maneuver=20, interp_linear=True)
 
 plt.figure()
 plt.title("DLC Maneuver Cones and Trajectory")
