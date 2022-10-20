@@ -71,8 +71,8 @@ for i, length in enumerate(SECTION_LENGTHS):
     # update previous width
     prev_width = SECTION_WIDTHS[i]
 
-plt.scatter(cones_x, cones_y)
-plt.show()
-
-plt.plot(cones_x)
+plt.figure()
+plt.title("DLC Maneuver Cones and Trajectory")
+plt.scatter(cones_x, cones_y, c='tab:orange', label='Cones')
+plt.legend()
 plt.show()
