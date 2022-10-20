@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+import scipy
 
 # Vehicle parameters
 VEHICLE_WIDTH = 2.0 # in meters
@@ -71,8 +72,59 @@ for i, length in enumerate(SECTION_LENGTHS):
     # update previous width
     prev_width = SECTION_WIDTHS[i]
 
+# Used to generate splines
+XP0 = START_X
+A = SECTION_LENGTHS[0] - 5.0
+XP1 = START_X + SECTION_LENGTHS[0]
+XP2 = XP1 + SECTION_LENGTHS[1]
+B = (SECTION_LENGTHS[0] + SECTION_LENGTHS[1]) + 5.0
+C = (B - 5.0 + SECTION_LENGTHS[2]) - 5.0
+XP3 = XP2 + SECTION_LENGTHS[2]
+XP4 = XP3 + SECTION_LENGTHS[3]
+D = (C + 5.0 + SECTION_LENGTHS[3]) + 5.0
+XP5 = XP4 + SECTION_LENGTHS[4]
+
+WAYPOINTS_X = np.array([
+                        XP0, 
+                        A, 
+                        XP1, 
+                        XP2,
+                        B, 
+                        C, 
+                        XP3,
+                        XP4,
+                        D,
+                        XP5
+                        ])
+
+# y-coordinates of spline
+wpt_offset = SECTION_WIDTHS[2] / 2.0 + SECTION_WIDTHS[0]/2.0 + SECTION_OFFSETS[2]
+
+WAYPOINTS_Y = np.array([
+                        START_Y,        # XP0
+                        START_Y,        # A
+                        START_Y,        # XP1
+                        wpt_offset,     # XP2
+                        wpt_offset,     # B
+                        wpt_offset,     # C
+                        wpt_offset,     # XP3
+                        START_Y,        # XP4
+                        START_Y,        # D
+                        START_Y         # XP5
+                        ])
+
+
+# try re-interpolate
+spl = scipy.interpolate.make_interp_spline(
+    WAYPOINTS_X, WAYPOINTS_Y, k=1
+)
+x_new = np.arange(WAYPOINTS_X[0], WAYPOINTS_X[-1], 0.01)
+y_new = spl(x_new)
+
 plt.figure()
 plt.title("DLC Maneuver Cones and Trajectory")
 plt.scatter(cones_x, cones_y, c='tab:orange', label='Cones')
+plt.scatter(x_new, y_new)
+plt.scatter(WAYPOINTS_X, WAYPOINTS_Y, c='r')
 plt.legend()
 plt.show()
