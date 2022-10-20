@@ -19,7 +19,7 @@ def generate_splines(interp_linear=True):
     D = (C + 5.0 + SECTION_LENGTHS[3]) + 5.0
     XP5 = XP4 + SECTION_LENGTHS[4]
 
-    WAYPOINTS_X = np.array([
+    waypoints_y = np.array([
                             XP0, 
                             A, 
                             XP1, 
@@ -35,7 +35,7 @@ def generate_splines(interp_linear=True):
     # y-coordinates of spline
     wpt_offset = SECTION_WIDTHS[2] / 2.0 + SECTION_WIDTHS[0]/2.0 + SECTION_OFFSETS[2]
 
-    WAYPOINTS_Y = np.array([
+    waypoints_x = np.array([
                             START_Y,        # XP0
                             START_Y,        # A
                             START_Y,        # XP1
@@ -51,14 +51,14 @@ def generate_splines(interp_linear=True):
     
     if interp_linear:
         # Dense linear interpolation for more accurate bezier curve
-        spl = scipy.interpolate.interp1d(WAYPOINTS_X, WAYPOINTS_Y, kind='slinear')
-        x_new = np.arange(WAYPOINTS_X[0], WAYPOINTS_X[-1], 0.25)
+        spl = scipy.interpolate.interp1d(waypoints_x, waypoints_y, kind='slinear')
+        x_new = np.arange(waypoints_x[0], waypoints_y[-1], 0.25)
         y_new = spl(x_new)
 
     points = np.vstack((x_new, y_new)).T
     x_new, y_new = bezier_interpolation(points)
 
-    return x_new, y_new
+    return x_new, y_new, waypoints_x, waypoints_y
 
 # Vehicle parameters
 VEHICLE_WIDTH = 2.0 # in meters
@@ -130,12 +130,12 @@ for i, length in enumerate(SECTION_LENGTHS):
     prev_width = SECTION_WIDTHS[i]
 
 # Get interpolated spline from waypoints
-x_new, y_new = generate_splines(interp_linear=True)
+x_new, y_new, waypoints_x, waypoints_y = generate_splines(interp_linear=True)
 
 plt.figure()
 plt.title("DLC Maneuver Cones and Trajectory")
 plt.scatter(cones_x, cones_y, c='tab:orange', label='Cones')
 plt.scatter(x_new, y_new)
-plt.scatter(WAYPOINTS_X, WAYPOINTS_Y, c='r')
+plt.scatter(waypoints_x, waypoints_y, c='r')
 plt.legend()
 plt.show()
