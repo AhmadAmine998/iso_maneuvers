@@ -80,6 +80,7 @@ XP2 = XP1 + SECTION_LENGTHS[1]
 B = (SECTION_LENGTHS[0] + SECTION_LENGTHS[1]) + 5.0
 C = (B - 5.0 + SECTION_LENGTHS[2]) - 5.0
 XP3 = XP2 + SECTION_LENGTHS[2]
+XPM = (XP3 + XP2) / 2.0
 XP4 = XP3 + SECTION_LENGTHS[3]
 D = (C + 5.0 + SECTION_LENGTHS[3]) + 5.0
 XP5 = XP4 + SECTION_LENGTHS[4]
@@ -89,8 +90,9 @@ WAYPOINTS_X = np.array([
                         A, 
                         XP1, 
                         XP2,
-                        B, 
-                        C, 
+                        XPM,
+                        # B, 
+                        # C, 
                         XP3,
                         XP4,
                         D,
@@ -106,7 +108,7 @@ WAYPOINTS_Y = np.array([
                         START_Y,        # XP1
                         wpt_offset,     # XP2
                         wpt_offset,     # B
-                        wpt_offset,     # C
+                        # wpt_offset,     # C
                         wpt_offset,     # XP3
                         START_Y,        # XP4
                         START_Y,        # D
@@ -115,9 +117,10 @@ WAYPOINTS_Y = np.array([
 
 
 # try re-interpolate
-spl = scipy.interpolate.make_interp_spline(
-    WAYPOINTS_X, WAYPOINTS_Y, k=1
-)
+# spl = scipy.interpolate.make_interp_spline(
+#     WAYPOINTS_X, WAYPOINTS_Y, k=1
+# )
+spl = scipy.interpolate.interp1d(WAYPOINTS_X, WAYPOINTS_Y, kind='quadratic')
 x_new = np.arange(WAYPOINTS_X[0], WAYPOINTS_X[-1], 0.01)
 y_new = spl(x_new)
 
