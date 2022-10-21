@@ -24,64 +24,37 @@ def generate_splines(n_maneuver = 0, interp_linear=True):
     # y-coordinates of spline
     wpt_offset = SECTION_WIDTHS[2] / 2.0 + SECTION_WIDTHS[0]/2.0 + SECTION_OFFSETS[2]
 
-    if repeat > 0:
-        waypoints_x = np.array([
-                                XP0, 
-                                A, 
-                                XP1, 
-                                XP2,
-                                B, 
-                                C, 
-                                XP3,
-                                XP4,
-                                # D,
-                                # XP5
-                                ])
+    waypoints_x = np.array([
+                            XP0, 
+                            A, 
+                            XP1, 
+                            XP2,
+                            B, 
+                            C, 
+                            XP3,
+                            XP4,
+                            # D,
+                            # XP5
+                            ])
 
-        waypoints_y = np.array([
-                                START_Y,        # XP0
-                                START_Y,        # A
-                                START_Y,        # XP1
-                                wpt_offset,     # XP2
-                                wpt_offset,     # B
-                                wpt_offset,     # C
-                                wpt_offset,     # XP3
-                                START_Y,        # XP4
-                                # START_Y,        # D
-                                # START_Y         # XP5
-                                ])
-    else:
-        waypoints_x = np.array([
-                                XP0, 
-                                A, 
-                                XP1, 
-                                XP2,
-                                B, 
-                                C, 
-                                XP3,
-                                XP4,
-                                D,
-                                XP5
-                                ])
-
-        waypoints_y = np.array([
-                                START_Y,        # XP0
-                                START_Y,        # A
-                                START_Y,        # XP1
-                                wpt_offset,     # XP2
-                                wpt_offset,     # B
-                                wpt_offset,     # C
-                                wpt_offset,     # XP3
-                                START_Y,        # XP4
-                                START_Y,        # D
-                                START_Y         # XP5
-                                ])
+    waypoints_y = np.array([
+                            START_Y,        # XP0
+                            START_Y,        # A
+                            START_Y,        # XP1
+                            wpt_offset,     # XP2
+                            wpt_offset,     # B
+                            wpt_offset,     # C
+                            wpt_offset,     # XP3
+                            START_Y,        # XP4
+                            # START_Y,        # D
+                            # START_Y         # XP5
+                            ])
 
     waypoints_xrep = waypoints_x.copy()
     waypoints_yrep = waypoints_y.copy()
 
     SEGMENT_WIDTH = waypoints_xrep[-1]
-    if repeat < 3:
+    if repeat < 2:
         for i in range(repeat):
             waypoints_xrep = np.append(waypoints_xrep, waypoints_x + waypoints_xrep[-1])
             waypoints_yrep = np.append(waypoints_yrep, waypoints_y)
@@ -90,7 +63,7 @@ def generate_splines(n_maneuver = 0, interp_linear=True):
         waypoints_yrep = np.append(waypoints_yrep, np.array([START_Y, START_Y]))
     else:
         # Generate one pattern
-        for i in range(3):
+        for i in range(2):
             waypoints_xrep = np.append(waypoints_xrep, waypoints_x + waypoints_xrep[-1])
             waypoints_yrep = np.append(waypoints_yrep, waypoints_y)
 
@@ -100,7 +73,7 @@ def generate_splines(n_maneuver = 0, interp_linear=True):
     if interp_linear:
         # Dense linear interpolation for more accurate bezier curve
         spl = scipy.interpolate.interp1d(waypoints_xrep, waypoints_yrep, kind='slinear')
-        x_new = np.arange(waypoints_xrep[0], waypoints_xrep[-1], 0.25)
+        x_new = np.arange(waypoints_xrep[0], waypoints_xrep[-1], 0.16)
         y_new = spl(x_new)
     else:
         x_new = waypoints_xrep.copy()
@@ -109,9 +82,9 @@ def generate_splines(n_maneuver = 0, interp_linear=True):
     points = np.vstack((x_new, y_new)).T
     x_new, y_new = interp_bezier(points)
 
-    if repeat >= 3:
+    if repeat >= 2:
         # repeat by copy
-        loc_start = XP4 + 2*SEGMENT_WIDTH
+        loc_start = XP4 + SEGMENT_WIDTH
         idx_start = (np.abs(x_new - loc_start)).argmin()
 
         loc_end   = XP4 
@@ -121,7 +94,7 @@ def generate_splines(n_maneuver = 0, interp_linear=True):
         repeat_y = y_new[idx_start:idx_end].copy()
         
         # Generate repeat pattern
-        for i in range(repeat - 3):
+        for i in range(repeat - 2):
             repeat_x = np.append(repeat_x, x_new[idx_start:idx_end] + repeat_x[-1])
             repeat_y = np.append(repeat_y, y_new[idx_start:idx_end])
 
