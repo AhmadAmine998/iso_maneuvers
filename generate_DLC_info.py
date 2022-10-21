@@ -5,7 +5,7 @@ import scipy
 # utils
 from utils.bezier_interpolation import interp_bezier
 
-def generate_splines(n_maneuver = 0, interp_linear=True):
+def generate_splines(cones_x, cones_y, n_maneuver = 0, interp_linear=True):
     repeat = n_maneuver - 1 
 
     # Used to generate splines
@@ -53,6 +53,8 @@ def generate_splines(n_maneuver = 0, interp_linear=True):
     waypoints_xrep = waypoints_x.copy()
     waypoints_yrep = waypoints_y.copy()
 
+    cones_xrep = cones_x.copy()
+    cones_yrep = cones_y.copy()
     SEGMENT_WIDTH = waypoints_xrep[-1]
     if repeat < 2:
         for i in range(repeat):
@@ -61,6 +63,12 @@ def generate_splines(n_maneuver = 0, interp_linear=True):
         
         waypoints_xrep = np.append(waypoints_xrep, np.array([D, XP5])+ waypoints_xrep[-1] - XP4)
         waypoints_yrep = np.append(waypoints_yrep, np.array([START_Y, START_Y]))
+
+        # Clean generation of cones for reference
+        cone_start = (np.abs(cones_x - XP2)).argmin()
+        for i in range(repeat):
+            cones_xrep = np.append(cones_xrep, cones_x[cone_start:] + (SEGMENT_WIDTH)*(i+1))
+            cones_yrep = np.append(cones_yrep, cones_y[cone_start:])
     else:
         # Generate one pattern
         for i in range(2):
@@ -125,7 +133,13 @@ def generate_splines(n_maneuver = 0, interp_linear=True):
         waypoints_xrep = np.append(waypoints_xrep, np.array([D, XP5])+ waypoints_xrep[-1] - XP4)
         waypoints_yrep = np.append(waypoints_yrep, np.array([START_Y, START_Y]))
 
-    return x_new, y_new, waypoints_xrep, waypoints_yrep
+        # Clean generation of cones for reference
+        cone_start = (np.abs(cones_x - XP2)).argmin()
+        for i in range(repeat):
+            cones_xrep = np.append(cones_xrep, cones_x[cone_start:] + (SEGMENT_WIDTH)*(i+1))
+            cones_yrep = np.append(cones_yrep, cones_y[cone_start:])
+    
+    return x_new, y_new, waypoints_xrep, waypoints_yrep, cones_xrep, cones_yrep
 
 if __name__ == '__main__':
     # Vehicle parameters
@@ -198,7 +212,7 @@ if __name__ == '__main__':
         prev_width = SECTION_WIDTHS[i]
 
     # Get interpolated spline from waypoints
-    x_new, y_new, waypoints_x, waypoints_y = generate_splines(n_maneuver=10, interp_linear=True)
+    x_new, y_new, waypoints_x, waypoints_y, cones_x, cones_y = generate_splines(cones_x, cones_y, n_maneuver=3, interp_linear=True)
 
     plt.figure()
     plt.title("DLC Maneuver Cones and Trajectory")
