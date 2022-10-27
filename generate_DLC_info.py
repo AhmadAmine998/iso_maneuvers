@@ -1,6 +1,9 @@
+from ast import Not
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy
+import datetime
+import os
 
 # utils
 from utils.bezier_interpolation import interp_bezier
@@ -142,6 +145,9 @@ def generate_splines(cones_x, cones_y, n_maneuver = 0, interp_linear=True):
     return x_new, y_new, waypoints_xrep, waypoints_yrep, cones_xrep, cones_yrep
 
 if __name__ == '__main__':
+    # Save Results ?
+    SAVE = True
+
     # Vehicle parameters
     VEHICLE_WIDTH = 2.0 # in meters
 
@@ -221,3 +227,27 @@ if __name__ == '__main__':
     plt.scatter(waypoints_x, waypoints_y, c='r')
     plt.legend()
     plt.show()
+
+    if SAVE:
+        # Specify path
+        saveDir = './results/DLC/'
+        
+        # Check if saveDir exists
+        if os.path.exists(saveDir) == False:
+            if os.path.exists('./results') == False:
+                os.mkdir('./results')
+            os.mkdir('./results/DLC')
+        
+        now = datetime.datetime.now()
+        dt_string = now.strftime("%Y%m%d_%H%M%S")
+        os.mkdir('./results/DLC/'+dt_string)
+        saveDir = saveDir + dt_string
+
+        # Key Waypoints
+        np.savetxt(saveDir + '/waypoints' + dt_string + '.csv', np.vstack((waypoints_x, waypoints_y)).T, header="x_m,y_m", delimiter=',')
+
+        # Trajectory
+        np.savetxt(saveDir + '/trajectory' + dt_string + '.csv', np.vstack((x_new, y_new)).T, header="x_m,y_m", delimiter=',')
+
+        # Cone Locations
+        np.savetxt(saveDir + '/cones' + dt_string + '.csv', np.vstack((x_new, y_new)).T, header="x_m,y_m", delimiter=',')
