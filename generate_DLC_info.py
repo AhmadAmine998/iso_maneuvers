@@ -8,24 +8,27 @@ import os
 # utils
 from utils.bezier_interpolation import interp_bezier
 
-def generate_splines(cones_x_array, cones_y_array, n_maneuver = 0, interp_linear=True):
+
+CONE_WIDTH = 0.285
+
+def generate_DLC_splines_and_waypoints(section_lengths, section_widths, section_offsets, cones_x_array, cones_y_array, n_maneuver = 0, interp_linear=True):
     repeat = n_maneuver - 1 
 
     # Used to generate splines
     XP0 = START_X
-    A = SECTION_LENGTHS[0] - 5.0
-    XP1 = START_X + SECTION_LENGTHS[0]
-    XP2 = XP1 + SECTION_LENGTHS[1]
-    B = (SECTION_LENGTHS[0] + SECTION_LENGTHS[1]) + 5.0
-    C = (B - 5.0 + SECTION_LENGTHS[2]) - 5.0
-    XP3 = XP2 + SECTION_LENGTHS[2]
+    A = section_lengths[0] - 5.0
+    XP1 = START_X + section_lengths[0]
+    XP2 = XP1 + section_lengths[1]
+    B = (section_lengths[0] + section_lengths[1]) + 5.0
+    C = (B - 5.0 + section_lengths[2]) - 5.0
+    XP3 = XP2 + section_lengths[2]
     XPM = (XP3 + XP2) / 2.0
-    XP4 = XP3 + SECTION_LENGTHS[3]
-    D = (C + 5.0 + SECTION_LENGTHS[3]) + 5.0
-    XP5 = XP4 + SECTION_LENGTHS[4]
+    XP4 = XP3 + section_lengths[3]
+    D = (C + 5.0 + section_lengths[3]) + 5.0
+    XP5 = XP4 + section_lengths[4]
 
     # y-coordinates of spline
-    wpt_offset = SECTION_WIDTHS[2] / 2.0 + SECTION_WIDTHS[0]/2.0 + SECTION_OFFSETS[2]
+    wpt_offset = section_widths[2] / 2.0 + section_widths[0]/2.0 + section_offsets[2]
 
     waypoints_x = np.array([
                             XP0, 
@@ -147,33 +150,15 @@ def generate_splines(cones_x_array, cones_y_array, n_maneuver = 0, interp_linear
     
     return x_new, y_new, waypoints_xrep, waypoints_yrep, cones_xrep, cones_yrep
 
-if __name__ == '__main__':
-    # Save Results ?
-    SAVE = True
-
-    # Vehicle parameters
-    VEHICLE_WIDTH = 2.0 # in meters
-
-    # Desired Number of Chained maneuvers
-    NUM_CHAINED_MANEUVERS = 10
-    
+def generate_DLC_cone_locations(start_x, start_y, vehicle_width, cone_spacing):
     # ISO 3888-2 Standard all in meters
-    B1 = 1.1 * VEHICLE_WIDTH + 0.25
-    B3 = VEHICLE_WIDTH + 1
-    B5 = min(1.3 * VEHICLE_WIDTH + 0.25, 3.0)
+    B1 = 1.1 * vehicle_width + 0.25
+    B3 = vehicle_width + 1
+    B5 = min(1.3 * vehicle_width + 0.25, 3.0)
 
-    SECTION_LENGTHS = np.array([12.0,   13.5, 11.0,   12.5, 12.0])
-    SECTION_WIDTHS  = np.array([  B1, np.inf,   B3, np.inf,   B5])
-    SECTION_OFFSETS = np.array([ 0.0,    0.0,  1.0,    0.0,  0.0])
-
-    CONE_WIDTH = 0.285
-
-    # Desired starting coordinates of trajectory
-    START_X = 0.0
-    START_Y = 0.0
-
-    # Desired cone spacing
-    CONE_SPACING = CONE_WIDTH * 10.0
+    section_lengths = np.array([12.0,   13.5, 11.0,   12.5, 12.0])
+    section_widths  = np.array([  B1, np.inf,   B3, np.inf,   B5])
+    section_offsets = np.array([ 0.0,    0.0,  1.0,    0.0,  0.0])
 
     # Arrays of cone coordinates
     cones_x_left  = None
@@ -184,27 +169,27 @@ if __name__ == '__main__':
     cones_y_right = None
 
     # Current x-coordinate along trajectory
-    curr_x = START_X
+    curr_x = start_x
 
     # width of last non-empty section
     prev_width = 0.0
-    for i, length in enumerate(SECTION_LENGTHS):
-        if SECTION_WIDTHS[i] == np.inf:
+    for i, length in enumerate(section_lengths):
+        if section_widths[i] == np.inf:
             # no cones
             curr_x += length
             continue
         
-        center_to_cone = SECTION_WIDTHS[i] / 2.0
-        if SECTION_OFFSETS[i] != 0:
+        center_to_cone = section_widths[i] / 2.0
+        if section_offsets[i] != 0:
             # find offset using ISO standard definition of offset
-            offset = center_to_cone + prev_width/2.0 + SECTION_OFFSETS[i]
+            offset = center_to_cone + prev_width/2.0 + section_offsets[i]
         else:
             offset = 0.0
 
-        new_cones_x_up   = np.array([np.arange(curr_x, curr_x + length, CONE_SPACING)]).flatten()
-        new_cones_x_down = np.array([np.arange(curr_x, curr_x + length, CONE_SPACING)]).flatten()
-        new_cones_y_up   = np.repeat((START_Y + offset) + SECTION_WIDTHS[i]/2.0, new_cones_x_up.shape[0])
-        new_cones_y_down = np.repeat((START_Y + offset) - SECTION_WIDTHS[i]/2.0, new_cones_x_down.shape[0])
+        new_cones_x_up   = np.array([np.arange(curr_x, curr_x + length, cone_spacing)]).flatten()
+        new_cones_x_down = np.array([np.arange(curr_x, curr_x + length, cone_spacing)]).flatten()
+        new_cones_y_up   = np.repeat((start_y + offset) + section_widths[i]/2.0, new_cones_x_up.shape[0])
+        new_cones_y_down = np.repeat((start_y + offset) - section_widths[i]/2.0, new_cones_x_down.shape[0])
 
         # Add cones_x up and down
         if cones_x_left is None:
@@ -230,10 +215,32 @@ if __name__ == '__main__':
         curr_x += length
 
         # update previous width
-        prev_width = SECTION_WIDTHS[i]
+        prev_width = section_widths[i]
+    
+    return section_lengths, section_widths, section_offsets, cones_x_left, cones_x_right, cones_y_left, cones_y_right
+
+if __name__ == '__main__':
+    # Save Results ?
+    SAVE = True
+
+    # Vehicle parameters
+    VEHICLE_WIDTH = 2.0 # in meters
+
+    # Desired Number of Chained maneuvers
+    NUM_CHAINED_MANEUVERS = 10
+
+    # Desired starting coordinates of trajectory
+    START_X = 0.0
+    START_Y = 0.0
+
+    # Desired cone spacing
+    CONE_SPACING = CONE_WIDTH * 10.0
+
+    # Generate waypoints from ISO-38882 standard
+    section_lengths, section_widths, section_offsets, cones_x_left, cones_x_right, cones_y_left, cones_y_right = generate_DLC_cone_locations(START_X, START_Y, VEHICLE_WIDTH, CONE_SPACING)
 
     # Get interpolated spline from waypoints
-    x_new, y_new, waypoints_x, waypoints_y, cones_x, cones_y = generate_splines([cones_x_left, cones_x_right], [cones_y_left, cones_y_right], n_maneuver=NUM_CHAINED_MANEUVERS, interp_linear=True)
+    x_new, y_new, waypoints_x, waypoints_y, cones_x, cones_y = generate_DLC_splines_and_waypoints(section_lengths, section_widths, section_offsets, [cones_x_left, cones_x_right], [cones_y_left, cones_y_right], n_maneuver=NUM_CHAINED_MANEUVERS, interp_linear=True)
 
     plt.figure()
     plt.title("DLC Maneuver Cones and Trajectory")
