@@ -242,7 +242,7 @@ if __name__ == '__main__':
     VEHICLE_WIDTH = 2.0 # in meters
 
     # Desired Number of Chained maneuvers
-    NUM_CHAINED_MANEUVERS = 10
+    NUM_CHAINED_MANEUVERS = 1
 
     # Desired starting coordinates of trajectory
     START_X = 0.0
