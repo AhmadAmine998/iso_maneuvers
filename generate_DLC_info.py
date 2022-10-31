@@ -8,7 +8,7 @@ import os
 # utils
 from utils.bezier_interpolation import interp_bezier
 
-def generate_splines(cones_x, cones_y, n_maneuver = 0, interp_linear=True):
+def generate_splines(cones_x_array, cones_y_array, n_maneuver = 0, interp_linear=True):
     repeat = n_maneuver - 1 
 
     # Used to generate splines
@@ -56,8 +56,8 @@ def generate_splines(cones_x, cones_y, n_maneuver = 0, interp_linear=True):
     waypoints_xrep = waypoints_x.copy()
     waypoints_yrep = waypoints_y.copy()
 
-    cones_xrep = cones_x.copy()
-    cones_yrep = cones_y.copy()
+    cones_xrep = [cones_x.copy() for cones_x in cones_x_array]
+    cones_yrep = [cones_y.copy() for cones_y in cones_y_array]
     SEGMENT_WIDTH = waypoints_xrep[-1]
     if repeat < 2:
         for i in range(repeat):
@@ -67,11 +67,12 @@ def generate_splines(cones_x, cones_y, n_maneuver = 0, interp_linear=True):
         waypoints_xrep = np.append(waypoints_xrep, np.array([D, XP5])+ waypoints_xrep[-1] - XP4)
         waypoints_yrep = np.append(waypoints_yrep, np.array([START_Y, START_Y]))
 
-        # Clean generation of cones for reference
-        cone_start = (np.abs(cones_x - XP2)).argmin()
-        for i in range(repeat):
-            cones_xrep = np.append(cones_xrep, cones_x[cone_start:] + (SEGMENT_WIDTH)*(i+1))
-            cones_yrep = np.append(cones_yrep, cones_y[cone_start:])
+        for i, (cones_x, cones_y) in enumerate(zip(cones_xrep, cones_yrep)):
+            # Clean generation of cones for reference
+            cone_start = (np.abs(cones_x - XP2)).argmin()
+            for j in range(repeat):
+                cones_xrep[i] = np.append(cones_xrep[i], cones_x[cone_start:] + (SEGMENT_WIDTH)*(j+1))
+                cones_yrep[i] = np.append(cones_yrep[i], cones_y[cone_start:])
     else:
         # Generate one pattern
         for i in range(2):
@@ -136,11 +137,13 @@ def generate_splines(cones_x, cones_y, n_maneuver = 0, interp_linear=True):
         waypoints_xrep = np.append(waypoints_xrep, np.array([D, XP5])+ waypoints_xrep[-1] - XP4)
         waypoints_yrep = np.append(waypoints_yrep, np.array([START_Y, START_Y]))
 
-        # Clean generation of cones for reference
-        cone_start = (np.abs(cones_x - XP2)).argmin()
-        for i in range(repeat):
-            cones_xrep = np.append(cones_xrep, cones_x[cone_start:] + (SEGMENT_WIDTH)*(i+1))
-            cones_yrep = np.append(cones_yrep, cones_y[cone_start:])
+
+        for i, (cones_x, cones_y) in enumerate(zip(cones_xrep, cones_yrep)):
+            # Clean generation of cones for reference
+            cone_start = (np.abs(cones_x - XP2)).argmin()
+            for j in range(repeat):
+                cones_xrep[i] = np.append(cones_xrep[i], cones_x[cone_start:] + (SEGMENT_WIDTH)*(j+1))
+                cones_yrep[i] = np.append(cones_yrep[i], cones_y[cone_start:])
     
     return x_new, y_new, waypoints_xrep, waypoints_yrep, cones_xrep, cones_yrep
 
@@ -151,6 +154,9 @@ if __name__ == '__main__':
     # Vehicle parameters
     VEHICLE_WIDTH = 2.0 # in meters
 
+    # Desired Number of Chained maneuvers
+    NUM_CHAINED_MANEUVERS = 10
+    
     # ISO 3888-2 Standard all in meters
     B1 = 1.1 * VEHICLE_WIDTH + 0.25
     B3 = VEHICLE_WIDTH + 1
@@ -170,8 +176,12 @@ if __name__ == '__main__':
     CONE_SPACING = CONE_WIDTH * 10.0
 
     # Arrays of cone coordinates
-    cones_x = None
-    cones_y = None
+    cones_x_left  = None
+    cones_x_right = None
+
+    # Add cones_y up and down
+    cones_y_left  = None
+    cones_y_right = None
 
     # Current x-coordinate along trajectory
     curr_x = START_X
@@ -191,25 +201,30 @@ if __name__ == '__main__':
         else:
             offset = 0.0
 
-        new_cones_x = np.array([np.arange(curr_x, curr_x + length, CONE_SPACING)]*2).flatten()
-        new_cones_y_up   = np.repeat((START_Y + offset) + SECTION_WIDTHS[i]/2.0, new_cones_x.shape[0])
-        new_cones_y_down = np.repeat((START_Y + offset) - SECTION_WIDTHS[i]/2.0, new_cones_x.shape[0])
+        new_cones_x_up   = np.array([np.arange(curr_x, curr_x + length, CONE_SPACING)]).flatten()
+        new_cones_x_down = np.array([np.arange(curr_x, curr_x + length, CONE_SPACING)]).flatten()
+        new_cones_y_up   = np.repeat((START_Y + offset) + SECTION_WIDTHS[i]/2.0, new_cones_x_up.shape[0])
+        new_cones_y_down = np.repeat((START_Y + offset) - SECTION_WIDTHS[i]/2.0, new_cones_x_down.shape[0])
 
         # Add cones_x up and down
-        if cones_x is None:
-            cones_x = new_cones_x
-            cones_x = np.append(cones_x, new_cones_x)
-        elif cones_x is not None:
-            cones_x = np.append(cones_x, new_cones_x)
-            cones_x = np.append(cones_x, new_cones_x)
+        if cones_x_left is None:
+            cones_x_left  = new_cones_x_up
+        elif cones_x_left is not None:
+            cones_x_left  = np.append(cones_x_left, new_cones_x_up)
+        if cones_x_right is None:
+            cones_x_right = new_cones_x_down
+        elif cones_x_right is not None:
+            cones_x_right = np.append(cones_x_right, new_cones_x_down)
 
         # Add cones_y up and down
-        if cones_y is None:
-            cones_y = new_cones_y_up
-            cones_y = np.append(cones_y, new_cones_y_down)
-        elif cones_y is not None:
-            cones_y = np.append(cones_y, new_cones_y_up)
-            cones_y = np.append(cones_y, new_cones_y_down)
+        if cones_y_left is None:
+            cones_y_left  = new_cones_y_up
+        elif cones_y_left is not None:
+            cones_y_left  = np.append(cones_y_left, new_cones_y_up)
+        if cones_y_right is None:
+            cones_y_right = new_cones_y_down
+        elif cones_y_right is not None:
+            cones_y_right = np.append(cones_y_right, new_cones_y_down)
 
         # move forward by a length
         curr_x += length
@@ -218,7 +233,7 @@ if __name__ == '__main__':
         prev_width = SECTION_WIDTHS[i]
 
     # Get interpolated spline from waypoints
-    x_new, y_new, waypoints_x, waypoints_y, cones_x, cones_y = generate_splines(cones_x, cones_y, n_maneuver=3, interp_linear=True)
+    x_new, y_new, waypoints_x, waypoints_y, cones_x, cones_y = generate_splines([cones_x_left, cones_x_right], [cones_y_left, cones_y_right], n_maneuver=NUM_CHAINED_MANEUVERS, interp_linear=True)
 
     plt.figure()
     plt.title("DLC Maneuver Cones and Trajectory")
@@ -250,4 +265,5 @@ if __name__ == '__main__':
         np.savetxt(saveDir + '/trajectory' + dt_string + '.csv', np.vstack((x_new, y_new)).T, header="x_m,y_m", delimiter=',')
 
         # Cone Locations
-        np.savetxt(saveDir + '/cones' + dt_string + '.csv', np.vstack((x_new, y_new)).T, header="x_m,y_m", delimiter=',')
+        np.savetxt(saveDir + '/cones_left' + dt_string + '.csv', np.vstack((cones_x[0], cones_y[0])).T, header="x_m,y_m", delimiter=',')
+        np.savetxt(saveDir + '/cones_right' + dt_string + '.csv', np.vstack((cones_x[1], cones_y[1])).T, header="x_m,y_m", delimiter=',')
