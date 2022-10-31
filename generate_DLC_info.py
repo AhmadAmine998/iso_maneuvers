@@ -4,10 +4,12 @@ import matplotlib.pyplot as plt
 import scipy
 import datetime
 import os
+from PIL import Image
+import yaml
 
 # utils
 from utils.bezier_interpolation import interp_bezier
-
+from utils.common import read_yaml_file, point_to_coord
 
 CONE_WIDTH = 0.285
 
@@ -219,6 +221,19 @@ def generate_DLC_cone_locations(start_x, start_y, vehicle_width, cone_spacing):
     
     return section_lengths, section_widths, section_offsets, cones_x_left, cones_x_right, cones_y_left, cones_y_right
 
+def generate_DLC_occupancy_grid(cones_x, cones_y, desired_yaml_dir):
+    map_cfg = read_yaml_file(desired_yaml_dir)
+    origin_x = map_cfg['origin'][0]; origin_y = map_cfg['origin'][1]
+    resolution = map_cfg['resolution']
+    pixel_x, pixel_y = point_to_coord(np.array(cones_x), np.array(cones_y), origin_x, origin_y, resolution)
+    occupancy_grid = np.ones((int(pixel_y.max()*1.1), int(pixel_x.max()*1.1)), dtype=np.uint8)
+    cone_width_pixels = np.round(CONE_WIDTH / resolution)
+    
+    for x,y in zip(pixel_x.flatten().astype(int), pixel_y.flatten().astype(int)):
+        occupancy_grid[y-int(cone_width_pixels/2):y+int(cone_width_pixels/2), x-int(cone_width_pixels/2):x+int(cone_width_pixels/2)] = 0
+
+    return occupancy_grid, map_cfg
+    
 if __name__ == '__main__':
     # Save Results ?
     SAVE = True
@@ -234,7 +249,7 @@ if __name__ == '__main__':
     START_Y = 0.0
 
     # Desired cone spacing
-    CONE_SPACING = CONE_WIDTH * 10.0
+    CONE_SPACING = CONE_WIDTH * 1.0
 
     # Generate waypoints from ISO-38882 standard
     section_lengths, section_widths, section_offsets, cones_x_left, cones_x_right, cones_y_left, cones_y_right = generate_DLC_cone_locations(START_X, START_Y, VEHICLE_WIDTH, CONE_SPACING)
@@ -242,12 +257,20 @@ if __name__ == '__main__':
     # Get interpolated spline from waypoints
     x_new, y_new, waypoints_x, waypoints_y, cones_x, cones_y = generate_DLC_splines_and_waypoints(section_lengths, section_widths, section_offsets, [cones_x_left, cones_x_right], [cones_y_left, cones_y_right], n_maneuver=NUM_CHAINED_MANEUVERS, interp_linear=True)
 
+    # Generate occupancy grid
+    occupancy_grid, map_cfg = generate_DLC_occupancy_grid(cones_x, cones_y, 'DLC_occupancy.yaml')
+    
     plt.figure()
     plt.title("DLC Maneuver Cones and Trajectory")
     plt.scatter(cones_x, cones_y, c='tab:orange', label='Cones')
     plt.scatter(x_new, y_new)
     plt.scatter(waypoints_x, waypoints_y, c='r')
     plt.legend()
+
+    plt.figure()
+    plt.title("DLC Maneuver Cones Occupancy Grid")
+    plt.imshow(occupancy_grid, cmap='gray')
+
     plt.show()
 
     if SAVE:
@@ -274,3 +297,9 @@ if __name__ == '__main__':
         # Cone Locations
         np.savetxt(saveDir + '/cones_left' + dt_string + '.csv', np.vstack((cones_x[0], cones_y[0])).T, header="x_m,y_m", delimiter=',')
         np.savetxt(saveDir + '/cones_right' + dt_string + '.csv', np.vstack((cones_x[1], cones_y[1])).T, header="x_m,y_m", delimiter=',')
+
+        # Occupancy Grid
+        grid = Image.fromarray(occupancy_grid*255)
+        grid.save(saveDir + '/DLC_occupancy.pgm')
+        with open(saveDir + '/DLC_occupancy' + dt_string + '.yaml', 'w') as occ_yaml:
+            _ = yaml.dump(map_cfg, occ_yaml)
